@@ -255,11 +255,12 @@ class HelperController extends Controller
         $product = [];
         $imageZipName = null;
 
+
         $dataFlowProfileRecord = $this->importProductRepository->findOneByField
         ('data_flow_profile_id', $data_flow_profile_id);
 
         if ($dataFlowProfileRecord) {
-            $csvData = (new DataGridImport)->toArray($dataFlowProfileRecord->file_path)[0];
+            $csvData = (new DataGridImport)->toArray($dataFlowProfileRecord->file_path)[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
 
             if (isset($dataFlowProfileRecord->image_path) && ($dataFlowProfileRecord->image_path != "") ) {
                 $imageZipName = $this->storeImageZip($dataFlowProfileRecord);
@@ -300,6 +301,49 @@ class HelperController extends Controller
 
                             return response()->json($configurableProduct);
                     }
+
+//                    $test = $this->configurableProductRepository->createApiProduct(request()->all(), $imageZipName, $product);
+//                    return response()->json($test);
+                }
+            } else {
+                return response()->json([
+                    "success" => true,
+                    "message" => "CSV Product Successfully Imported"
+                ]);
+            }
+        }
+    }
+
+    /**
+     * profile execution to upload products via API
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function runApiProfile()
+    {
+        $requestData['data_flow_profile_id']   = 1;
+        $requestData['numberOfCSVRecord']      = 1;
+        $requestData['countOfStartedProfiles'] = 0;
+        $product = [];
+        $imageZipName = null;
+
+
+        $dataFlowProfileRecord = $this->importProductRepository->findOneByField
+        ('data_flow_profile_id', $requestData['data_flow_profile_id']);
+
+        if ($dataFlowProfileRecord) {
+            $csvData = (new DataGridImport)->toArray(__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv')[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
+//
+//            if (isset($dataFlowProfileRecord->image_path) && ($dataFlowProfileRecord->image_path != "") ) {
+//                $imageZipName = $this->storeImageZip($dataFlowProfileRecord);
+//            }
+//
+            if ($requestData['numberOfCSVRecord'] >= 0) {
+                for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
+                    $product['loopCount'] = $i;
+                    $apiProduct           = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+
+                    return response()->json($apiProduct);
                 }
             } else {
                 return response()->json([
