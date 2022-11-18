@@ -83,15 +83,21 @@ class ProductImageRepository extends Repository
                 if ( ! is_null($imageZipName)) {
                     $files = "imported-products/extracted-images/admin/".$data['dataFlowProfileRecordId'].'/'. $imageZipName['dirname'].'/'.basename($value);
                 } else {
-                    $files = "imported-products/extracted-images/admin/".$data['dataFlowProfileRecordId'].'/'.basename($value);
+                    $files = __DIR__."/../../../../../public/imported-products/extracted-images/admin/".$data['dataFlowProfileRecordId'].'/'.basename($value);
                 }
 
-                $destination = "product/".$product->id.'/'.basename($value);
+                $directory = __DIR__."/../../../../../../images/product/".$product->id;
+                $destination = __DIR__."/../../../../../../images/product/".$product->id.'/'.basename($value);
+//                $destination = "product/".$product->id.'/'.basename($value);
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0777, true);
+                }
 
-                Storage::copy($files, $destination);
+                copy($files, $destination);
+//                Storage::copy($files, $destination);
 
                 $this->create([
-                    'path' => 'product/' . $product->id .'/'. basename($value),
+                    'path' => '/images/product/' . $product->id .'/'. basename($value),
                     'product_id' => $product->id
                 ]);
             }
