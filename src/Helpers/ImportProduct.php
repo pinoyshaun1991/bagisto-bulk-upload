@@ -73,7 +73,7 @@ class ImportProduct
         $linkSampleFiles = request()->file('link_sample_files');
         $sampleFile = request()->file('sample_file');
 
-        if (! isset($image)) {
+        if (!isset($image)) {
             $image = '';
         }
 
@@ -124,7 +124,7 @@ class ImportProduct
 
         if ((! empty($image) && in_array($image->getClientOriginalExtension(), $valid_image_extension)) && (in_array($file->getClientOriginalExtension(), $valid_extension))) {
             $uploadedImage = $image->storeAs($imageDir, uniqid().'.'.$image->getClientOriginalExtension());
-            
+
             $product['image_path'] = $uploadedImage;
 
             $uploadedFile = $file->storeAs($fileDir, uniqid().'.'.$file->getClientOriginalExtension());
