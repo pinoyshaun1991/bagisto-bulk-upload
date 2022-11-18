@@ -326,8 +326,7 @@ class HelperController extends Controller
         $requestData['countOfStartedProfiles'] = 0;
         $product = [];
         $imageZipName = null;
-
-
+        
         $dataFlowProfileRecord = $this->importProductRepository->findOneByField
         ('data_flow_profile_id', $requestData['data_flow_profile_id']);
 
