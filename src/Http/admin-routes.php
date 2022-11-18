@@ -34,22 +34,22 @@ Route::group(['middleware' => ['web']], function () {
                     Route::get('/', 'Webkul\Bulkupload\Http\Controllers\Admin\BulkUploadController@index')->defaults('_config', [
                         'view' => 'bulkupload::admin.bulk-upload.data-flow-profile.index'
                     ])->name('admin.dataflow-profile.index');
-        
+
                     Route::post('/addprofile', 'Webkul\Bulkupload\Http\Controllers\Admin\BulkUploadController@store')->defaults('_config', [
                         'view' => 'bulkupload::admin.bulk-upload.data-flow-profile.index'
                     ])->name('bulkupload.bulk-upload.dataflow.add-profile');
-        
+
                     Route::post('/runprofile', 'Webkul\Bulkupload\Http\Controllers\Admin\HelperController@runProfile')->defaults('_config', [
                         'view' => 'bulkupload::admin.bulk-upload.run-profile.progressbar'
                     ])->name('bulk-upload-admin.run-profile');
-        
+
                     // edit actions
                     Route::post('/delete/{id}','Webkul\Bulkupload\Http\Controllers\Admin\BulkUploadController@destroy')->name('bulkupload.admin.profile.delete');
-        
+
                     Route::get('/edit/{id}', 'Webkul\Bulkupload\Http\Controllers\Admin\BulkUploadController@edit')->defaults('_config', [
                         'view' => 'bulkupload::admin.bulk-upload.data-flow-profile.edit'
                     ])->name('bulkupload.admin.profile.edit');
-        
+
                     Route::post('/update/{id}', 'Webkul\Bulkupload\Http\Controllers\Admin\BulkUploadController@update')->defaults('_config', [
                         'view' => 'bulkupload::admin.bulk-upload.data-flow-profile.index'
                     ])->name('admin.bulk-upload.dataflow.update-profile');
