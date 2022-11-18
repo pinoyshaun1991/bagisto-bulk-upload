@@ -148,7 +148,7 @@ class BulkProductRepository extends Repository
             }
         }
 
-        if (request()->route()->getName() != 'admin.catalog.products.massupdate') {
+        if (request()->route() instanceof \Illuminate\Routing\Route && request()->route()->getName() != 'admin.catalog.products.massupdate' || php_sapi_name() === 'cli') {
             if  (isset($data['categories'])) {
                 $product->categories()->sync($data['categories']);
             }
@@ -199,7 +199,9 @@ class BulkProductRepository extends Repository
 
             $this->productInventoryRepository->saveInventories($data, $product);
 
-            $this->productImageRepository->uploadImages($data, $product);
+            if (request()->route() instanceof \Illuminate\Routing\Route && request()->route()->getName() != 'admin.catalog.products.massupdate') {
+                $this->productImageRepository->uploadImages($data, $product);
+            }
         }
 
         if (isset($data['channels'])) {
