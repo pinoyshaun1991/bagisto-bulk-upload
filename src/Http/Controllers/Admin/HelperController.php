@@ -14,6 +14,7 @@ use Webkul\Bulkupload\Repositories\Products\DownloadableProductRepository;
 use Webkul\Bulkupload\Repositories\Products\GroupedProductRepository;
 use Webkul\Bulkupload\Repositories\Products\BundledProductRepository;
 use Webkul\Bulkupload\Repositories\Products\BookingProductRepository;
+use Webkul\Product\Models\ProductImage;
 
 class HelperController extends Controller
 {
@@ -326,7 +327,8 @@ class HelperController extends Controller
         $requestData['countOfStartedProfiles'] = 0;
         $product = [];
         $imageZipName = null;
-        
+        ProductImage::query()->truncate();
+
         $dataFlowProfileRecord = $this->importProductRepository->findOneByField
         ('data_flow_profile_id', $requestData['data_flow_profile_id']);
 
