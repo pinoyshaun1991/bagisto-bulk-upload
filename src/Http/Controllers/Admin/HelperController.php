@@ -325,33 +325,53 @@ class HelperController extends Controller
         $requestData['data_flow_profile_id']   = 1;
         $requestData['numberOfCSVRecord']      = 1;
         $requestData['countOfStartedProfiles'] = 0;
-        $product = [];
-        $imageZipName = null;
+        $requestData['countOfStartedFiles']    = 0;
+        $product                               = [];
+        $imageZipName                          = null;
+        $fileCount                             = 0;
         ProductImage::query()->truncate();
 
         $dataFlowProfileRecord = $this->importProductRepository->findOneByField
         ('data_flow_profile_id', $requestData['data_flow_profile_id']);
 
+        $directory    = __DIR__.'/../../../../../../../../../Data';
+        $filesArray   = scandir($directory);
+        $csvDataArray = array();
+
+        foreach ($filesArray as $file) {
+            if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                $fileCount++;
+            }
+        }
+
         if ($dataFlowProfileRecord) {
-            $csvData = (new DataGridImport)->toArray(__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv')[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
+            for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
+            }
+
+            $csvData = call_user_func_array('array_merge', $csvDataArray);
 //
 //            if (isset($dataFlowProfileRecord->image_path) && ($dataFlowProfileRecord->image_path != "") ) {
 //                $imageZipName = $this->storeImageZip($dataFlowProfileRecord);
 //            }
 //
             if ($requestData['numberOfCSVRecord'] >= 0) {
-                for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
-                    $product['loopCount'] = $i;
-                    $apiProduct           = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+//                for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
+//                    $product['loopCount'] = $i;
+//                    $apiProduct = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+//                }
 
-                    return response()->json($apiProduct);
-                }
+                $apiProduct = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+
+
+                return response()->json($apiProduct);
             } else {
                 return response()->json([
                     "success" => true,
                     "message" => "CSV Product Successfully Imported"
                 ]);
             }
+//            }
         }
     }
 
