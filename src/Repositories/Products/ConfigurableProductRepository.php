@@ -2,11 +2,14 @@
 
 namespace Webkul\Bulkupload\Repositories\Products;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Container\Container as App;
 use Webkul\Admin\Imports\DataGridImport;
 use Illuminate\Support\Facades\Schema;
+use Webkul\Attribute\Models\AttributeOption;
+use Webkul\Attribute\Models\AttributeOptionTranslation;
 use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Product\Models\ProductAttributeValue;
 use Webkul\Core\Eloquent\Repository;
@@ -652,460 +655,491 @@ class ConfigurableProductRepository extends Repository
                 }
 
                 for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
-                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
-                }
+//                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                    $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+//                }
 
-                $csvData = call_user_func_array('array_merge', $csvDataArray);
+//                $csvData = call_user_func_array('array_merge', $csvDataArray);
 
-                foreach ($csvData as $key => $value) {
-                    if ($requestData['numberOfCSVRecord'] >= 0) {
-                        for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
-                            $product['loopCount'] = $i;
+                    foreach ($csvData as $key => $value) {
+                        if ($requestData['numberOfCSVRecord'] >= 0) {
+                            for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
+                                $product['loopCount'] = $i;
 
-                            if ($csvData[$i]['type'] == 'configurable') {
-                                try {
-                                    $createValidation = $this->helperRepository->createProductValidation($csvData[$i], $i);
+                                if ($csvData[$i]['type'] == 'configurable') {
+                                    try {
+                                        $createValidation = $this->helperRepository->createProductValidation($csvData[$i], $i);
 
-                                    if (isset($createValidation)) {
-                                        return $createValidation;
-                                    }
+                                        if (isset($createValidation)) {
+                                            return $createValidation;
+                                        }
 
-                                    unset($data);
+                                        unset($data);
 
-                                    $productFlatData = $this->productFlatRepository->findOneWhere([
-                                        'sku' => $csvData[$i]['sku'],
-                                        'url_key' => $csvData[$i]['url_key']
-                                    ]);
+                                        $productFlatData = $this->productFlatRepository->findOneWhere([
+                                            'sku' => $csvData[$i]['sku'],
+                                            'url_key' => $csvData[$i]['url_key']
+                                        ]);
 
-                                    $productData = $this->productRepository->findOneWhere([
-                                        'sku' => $csvData[$i]['sku']
-                                    ]);
+                                        $productData = $this->productRepository->findOneWhere([
+                                            'sku' => $csvData[$i]['sku']
+                                        ]);
 
-                                    $attributeFamilyData = $this->attributeFamilyRepository->findOneByfield('name', $csvData[$i]['attribute_family_name']);
+                                        $attributeFamilyData = $this->attributeFamilyRepository->findOneByfield('name', $csvData[$i]['attribute_family_name']);
 
-                                    if (!isset($productFlatData) && empty($productData)) {
-                                        $data['type'] = $csvData[$i]['type'];
-                                        $data['attribute_family_id'] = $attributeFamilyData->id;
-                                        $data['sku'] = $csvData[$i]['sku'];
+                                        if (!isset($productFlatData) && empty($productData)) {
+                                            $data['type'] = $csvData[$i]['type'];
+                                            $data['attribute_family_id'] = $attributeFamilyData->id;
+                                            $data['sku'] = $csvData[$i]['sku'];
 
-                                        $product = $this->bulkProductRepository->create($data);
-                                    } else {
-                                        $product = $productData;
-                                    }
+                                            $product = $this->bulkProductRepository->create($data);
+                                        } else {
+                                            $product = $productData;
+                                        }
 
-                                    unset($data);
-                                    $data = [];
-                                    $attributeCode = [];
-                                    $attributeValue = [];
+                                        unset($data);
+                                        $data = [];
+                                        $attributeCode = [];
+                                        $attributeValue = [];
 
-                                    foreach ($product->getTypeInstance()->getEditableAttributes()->toArray() as $key => $value) {
-                                        $attributeOptionArray = [];
-                                        $searchIndex = strtolower($value['code']);
+                                        foreach ($product->getTypeInstance()->getEditableAttributes()->toArray() as $key => $value) {
+                                            $attributeOptionArray = [];
+                                            $searchIndex = strtolower($value['code']);
 
-                                        if (array_key_exists($searchIndex, $csvData[$i])) {
-                                            if ($searchIndex == 'tax_category_id') {
-                                                continue;
+                                            if (array_key_exists($searchIndex, $csvData[$i])) {
+                                                if ($searchIndex == 'tax_category_id') {
+                                                    continue;
+                                                }
+
+                                                array_push($attributeCode, $searchIndex);
+
+                                                if ($value['type'] == "select") {
+                                                    $attributeOption = $this->attributeOptionRepository->findOneByField('admin_name', $csvData[$i][$searchIndex]);
+
+                                                    array_push($attributeValue, (isset($attributeOption['id']) ? $attributeOption['id'] : null));
+
+                                                } else if ($value['type'] == "checkbox") {
+                                                    $attributeOption = $this->attributeOptionRepository->findOneWhere([
+                                                        'attribute_id' => $value['id'],
+                                                        'admin_name' => $csvData[$i][$searchIndex]
+                                                    ]);
+
+                                                    array_push($attributeOptionArray, (isset($attributeOption['id']) ? $attributeOption['id'] : null));
+
+                                                    array_push($attributeValue, $attributeOptionArray);
+
+                                                    unset($attributeOptionArray);
+                                                } else {
+                                                    array_push($attributeValue, $csvData[$i][$searchIndex]);
+                                                }
+
+                                                $data = array_combine($attributeCode, $attributeValue);
                                             }
+                                        }
 
-                                            array_push($attributeCode, $searchIndex);
+                                        $data['dataFlowProfileRecordId'] = $dataFlowProfileRecord->id;
+                                        $data['channel'] = core()->getCurrentChannel()->code;
 
-                                            if ($value['type'] == "select") {
-                                                $attributeOption = $this->attributeOptionRepository->findOneByField('admin_name', $csvData[$i][$searchIndex]);
+                                        $dataProfile = app('Webkul\Bulkupload\Repositories\DataFlowProfileRepository')->findOneByfield(['id' => $data['dataFlowProfileRecordId']]);
+                                        $data['locale'] = $dataProfile->locale_code;
 
-                                                array_push($attributeValue, (isset($attributeOption['id']) ? $attributeOption['id'] : null));
+                                        $data['tax_category_id'] = (isset($csvData[$i]['tax_category_id']) && $csvData[$i]['tax_category_id']) ? $csvData[$i]['tax_category_id'] : null;
 
-                                            } else if ($value['type'] == "checkbox") {
-                                                $attributeOption = $this->attributeOptionRepository->findOneWhere([
-                                                    'attribute_id' => $value['id'],
-                                                    'admin_name' => $csvData[$i][$searchIndex]
+                                        $categoryData = explode(',', $csvData[$i]['categories_slug']);
+
+                                        if (is_null($csvData[$i]['categories_slug']) || empty($csvData[$i]['categories_slug'])) {
+                                            $categoryID = $this->categoryRepository->findBySlugOrFail('root')->id;
+                                        } else {
+                                            foreach ($categoryData as $key => $value) {
+                                                $categoryID[$key] = $this->categoryRepository->findBySlugOrFail($categoryData[$key])->id;
+                                            }
+                                        }
+
+                                        $data['categories'] = $categoryID;
+
+                                        $individualProductimages = explode(',', $csvData[$i]['images']);
+
+                                        if (isset($imageZipName)) {
+                                            $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
+
+                                            foreach ($images as $imageArraykey => $imagePath) {
+                                                $imageName = explode('/', $imagePath);
+
+                                                if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
+                                                    $data['images'][$imageArraykey] = $imagePath;
+                                                }
+                                            }
+                                        } else if (isset($csvData[$i]['images'])) {
+                                            foreach ($individualProductimages as $imageArraykey => $imageURL) {
+                                                if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
+
+                                                    $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
+//                                                $imagePath = storage_path('app/public/imported-products/extracted-images/admin/'.   $dataFlowProfileRecord->id);
+                                                    if (!file_exists($imagePath)) {
+                                                        mkdir($imagePath, 0777, true);
+                                                    }
+
+                                                    $imageFileExploded = explode('?', $imageURL);
+                                                    $imageFile = $imagePath . '/' . basename($imageFileExploded[0]);
+
+                                                    file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+
+                                                    $data['images'][$imageArraykey] = $imageFile;
+                                                }
+                                            }
+                                        }
+
+                                        $productAttributeStore = $this->bulkProductRepository->productRepositoryUpdateForVariants($data, $product->id);
+
+                                        if (isset($imageZipName)) {
+                                            $this->productImageRepository->bulkuploadImages($data, $product, $imageZipName);
+                                        } else if (isset($csvData[$i]['images'])) {
+                                            $this->productImageRepository->bulkuploadImages($data, $product, $imageZipName = null);
+                                        }
+
+                                        if (!isset($productFlatData) && empty($productFlatData)) {
+                                            $productFlatData = DB::table('product_flat')->select('id')->orderBy('id', 'desc')->first();
+                                        }
+
+                                        $product['productFlatId'] = $productFlatData->id;
+
+                                        $arr[] = $productFlatData->id;
+
+                                        unset($categoryID);
+                                    } catch (\Exception $e) {
+                                        $categoryError = explode('[', $e->getMessage());
+                                        $categorySlugError = explode(']', $e->getMessage());
+
+                                        $error = $e;
+
+                                        $productUploadedWithError = $requestData['productUploaded'] + 1;
+                                        $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $productUploadedWithError;
+                                        $requestData['countOfStartedProfiles'] = $i + 1;
+
+                                        if ($categoryError[0] == "No query results for model ") {
+                                            $dataToBeReturn = array(
+                                                'remainDataInCSV' => $remainDataInCSV,
+                                                'productsUploaded' => $requestData['productUploaded'],
+                                                'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
+                                                'error' => "Invalid Category Slug: " . $categorySlugError[1],
+                                            );
+                                            $categoryError[0] = null;
+                                        } else if (isset($e->errorInfo)) {
+                                            $dataToBeReturn = array(
+                                                'remainDataInCSV' => $remainDataInCSV,
+                                                'productsUploaded' => $requestData['productUploaded'],
+                                                'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
+                                                'error' => $e->errorInfo[2],
+                                            );
+                                        } else {
+                                            $dataToBeReturn = array(
+                                                'remainDataInCSV' => $remainDataInCSV,
+                                                'productsUploaded' => $requestData['productUploaded'],
+                                                'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
+                                                'error' => $e->getMessage(),
+                                            );
+                                        }
+                                        return $dataToBeReturn;
+                                    }
+
+                                } else if (isset($product['productFlatId'])) {
+
+                                    try {
+                                        $current = $product['loopCount'];
+                                        $num = 0;
+                                        $inventory = [];
+                                        $fileCount = 0;
+                                        $directory = __DIR__ . '/../../../../../../../../Data';
+                                        $filesArray = scandir($directory);
+                                        $csvDataArray = array();
+
+                                        foreach ($filesArray as $file) {
+                                            if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                                                $fileCount++;
+                                            }
+                                        }
+
+                                        for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                                            $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                                        }
+
+                                        $csvData = call_user_func_array('array_merge', $csvDataArray);
+
+                                        for ($i = $current; $i < count($csvData); $i++) {
+                                            $product['loopCount'] = $i;
+
+                                            if ($csvData[$i]['type'] != 'configurable') {
+                                                $productFlatData = $this->productFlatRepository->findOneWhere([
+                                                    'sku' => $csvData[$i]['sku'],
+                                                    'url_key' => null
                                                 ]);
 
-                                                array_push($attributeOptionArray, (isset($attributeOption['id']) ? $attributeOption['id'] : null));
+                                                $productData = $this->productRepository->findOneWhere([
+                                                    'sku' => $csvData[$i]['sku']
+                                                ]);
 
-                                                array_push($attributeValue, $attributeOptionArray);
+                                                $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
+                                                    'name' => $csvData[$i]['attribute_family_name']
+                                                ]);
 
-                                                unset($attributeOptionArray);
-                                            } else {
-                                                array_push($attributeValue, $csvData[$i][$searchIndex]);
-                                            }
+                                                if (!isset($productFlatData) && empty($productData)) {
+                                                    $data['parent_id'] = $product->id;
+                                                    $data['type'] = "simple";
+                                                    $data['attribute_family_id'] = $attributeFamilyData->id;
+                                                    $data['sku'] = $csvData[$i]['sku'];
 
-                                            $data = array_combine($attributeCode, $attributeValue);
-                                        }
-                                    }
-
-                                    $data['dataFlowProfileRecordId'] = $dataFlowProfileRecord->id;
-                                    $data['channel'] = core()->getCurrentChannel()->code;
-
-                                    $dataProfile = app('Webkul\Bulkupload\Repositories\DataFlowProfileRepository')->findOneByfield(['id' => $data['dataFlowProfileRecordId']]);
-                                    $data['locale'] = $dataProfile->locale_code;
-
-                                    $data['tax_category_id'] = (isset($csvData[$i]['tax_category_id']) && $csvData[$i]['tax_category_id']) ? $csvData[$i]['tax_category_id'] : null;
-
-                                    $categoryData = explode(',', $csvData[$i]['categories_slug']);
-
-                                    if (is_null($csvData[$i]['categories_slug']) || empty($csvData[$i]['categories_slug'])) {
-                                        $categoryID = $this->categoryRepository->findBySlugOrFail('root')->id;
-                                    } else {
-                                        foreach ($categoryData as $key => $value) {
-                                            $categoryID[$key] = $this->categoryRepository->findBySlugOrFail($categoryData[$key])->id;
-                                        }
-                                    }
-
-                                    $data['categories'] = $categoryID;
-
-                                    $individualProductimages = explode(',', $csvData[$i]['images']);
-
-                                    if (isset($imageZipName)) {
-                                        $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
-
-                                        foreach ($images as $imageArraykey => $imagePath) {
-                                            $imageName = explode('/', $imagePath);
-
-                                            if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
-                                                $data['images'][$imageArraykey] = $imagePath;
-                                            }
-                                        }
-                                    } else if (isset($csvData[$i]['images'])) {
-                                        foreach ($individualProductimages as $imageArraykey => $imageURL) {
-                                            if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
-
-                                                $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
-//                                                $imagePath = storage_path('app/public/imported-products/extracted-images/admin/'.   $dataFlowProfileRecord->id);
-                                                if (!file_exists($imagePath)) {
-                                                    mkdir($imagePath, 0777, true);
-                                                }
-
-                                                $imageFileExploded = explode('?', $imageURL);
-                                                $imageFile = $imagePath . '/' . basename($imageFileExploded[0]);
-
-                                                file_put_contents($imageFile, file_get_contents(trim($imageURL)));
-
-                                                $data['images'][$imageArraykey] = $imageFile;
-                                            }
-                                        }
-                                    }
-
-                                    $productAttributeStore = $this->bulkProductRepository->productRepositoryUpdateForVariants($data, $product->id);
-
-                                    if (isset($imageZipName)) {
-                                        $this->productImageRepository->bulkuploadImages($data, $product, $imageZipName);
-                                    } else if (isset($csvData[$i]['images'])) {
-                                        $this->productImageRepository->bulkuploadImages($data, $product, $imageZipName = null);
-                                    }
-
-                                    if (!isset($productFlatData) && empty($productFlatData)) {
-                                        $productFlatData = DB::table('product_flat')->select('id')->orderBy('id', 'desc')->first();
-                                    }
-
-                                    $product['productFlatId'] = $productFlatData->id;
-
-                                    $arr[] = $productFlatData->id;
-
-                                    unset($categoryID);
-                                } catch (\Exception $e) {
-                                    $categoryError = explode('[', $e->getMessage());
-                                    $categorySlugError = explode(']', $e->getMessage());
-
-                                    $error = $e;
-
-                                    $productUploadedWithError = $requestData['productUploaded'] + 1;
-                                    $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $productUploadedWithError;
-                                    $requestData['countOfStartedProfiles'] = $i + 1;
-
-                                    if ($categoryError[0] == "No query results for model ") {
-                                        $dataToBeReturn = array(
-                                            'remainDataInCSV' => $remainDataInCSV,
-                                            'productsUploaded' => $requestData['productUploaded'],
-                                            'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
-                                            'error' => "Invalid Category Slug: " . $categorySlugError[1],
-                                        );
-                                        $categoryError[0] = null;
-                                    } else if (isset($e->errorInfo)) {
-                                        $dataToBeReturn = array(
-                                            'remainDataInCSV' => $remainDataInCSV,
-                                            'productsUploaded' => $requestData['productUploaded'],
-                                            'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
-                                            'error' => $e->errorInfo[2],
-                                        );
-                                    } else {
-                                        $dataToBeReturn = array(
-                                            'remainDataInCSV' => $remainDataInCSV,
-                                            'productsUploaded' => $requestData['productUploaded'],
-                                            'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
-                                            'error' => $e->getMessage(),
-                                        );
-                                    }
-                                    return $dataToBeReturn;
-                                }
-
-                            } else if (isset($product['productFlatId'])) {
-
-                                try {
-                                    $current      = $product['loopCount'];
-                                    $num          = 0;
-                                    $inventory    = [];
-                                    $fileCount    = 0;
-                                    $directory    = __DIR__ . '/../../../../../../../../Data';
-                                    $filesArray   = scandir($directory);
-                                    $csvDataArray = array();
-
-                                    foreach ($filesArray as $file) {
-                                        if (strpos($file, 'bulkconfigurableproductupload') !== false) {
-                                            $fileCount++;
-                                        }
-                                    }
-
-                                    for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
-                                        $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
-                                    }
-
-                                    $csvData = call_user_func_array('array_merge', $csvDataArray);
-
-                                    for ($i = $current; $i < count($csvData); $i++) {
-                                        $product['loopCount'] = $i;
-
-                                        if ($csvData[$i]['type'] != 'configurable') {
-                                            $productFlatData = $this->productFlatRepository->findOneWhere([
-                                                'sku' => $csvData[$i]['sku'],
-                                                'url_key' => null
-                                            ]);
-
-                                            $productData = $this->productRepository->findOneWhere([
-                                                'sku' => $csvData[$i]['sku']
-                                            ]);
-
-                                            $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
-                                                'name' => $csvData[$i]['attribute_family_name']
-                                            ]);
-
-                                            if (!isset($productFlatData) && empty($productData)) {
-                                                $data['parent_id'] = $product->id;
-                                                $data['type'] = "simple";
-                                                $data['attribute_family_id'] = $attributeFamilyData->id;
-                                                $data['sku'] = $csvData[$i]['sku'];
-
-                                                $configSimpleproduct = $this->productRepository->create($data);
-                                            } else {
-                                                $configSimpleproduct = $productData;
-                                            }
-
-                                            unset($data);
-
-                                            $validateVariant = Validator::make($csvData[$i], [
-                                                'sku' => ['required', 'unique:products,sku,' . $configSimpleproduct->id, new \Webkul\Core\Contracts\Validations\Slug],
-                                                'name' => 'required',
-                                                'super_attribute_price' => 'required',
-                                                'super_attribute_weight' => 'required',
-                                                'super_attribute_option' => 'required',
-                                                'super_attributes' => 'required'
-                                            ]);
-
-                                            if ($validateVariant->fails()) {
-                                                $errors = $validateVariant->errors()->getMessages();
-
-                                                $this->helperRepository->deleteProductIfNotValidated($product->id);
-
-                                                foreach ($errors as $key => $error) {
-                                                    $errorToBeReturn[] = str_replace(".", "", $error[0]) . " for sku " . $csvData[$i]['sku'];
-                                                }
-
-                                                $productUploadedWithError = $requestData['productUploaded'] + 1;
-
-                                                $requestData['countOfStartedProfiles'] = $i + 1;
-
-                                                if ($requestData['numberOfCSVRecord'] != 0) {
-                                                    $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $productUploadedWithError;
+                                                    $configSimpleproduct = $this->productRepository->create($data);
                                                 } else {
-                                                    $remainDataInCSV = 0;
+                                                    $configSimpleproduct = $productData;
                                                 }
+
+                                                unset($data);
+
+                                                $validateVariant = Validator::make($csvData[$i], [
+                                                    'sku' => ['required', 'unique:products,sku,' . $configSimpleproduct->id, new \Webkul\Core\Contracts\Validations\Slug],
+                                                    'name' => 'required',
+                                                    'super_attribute_price' => 'required',
+                                                    'super_attribute_weight' => 'required',
+                                                    'super_attribute_option' => 'required',
+                                                    'super_attributes' => 'required'
+                                                ]);
+
+                                                if ($validateVariant->fails()) {
+                                                    $errors = $validateVariant->errors()->getMessages();
+
+                                                    $this->helperRepository->deleteProductIfNotValidated($product->id);
+
+                                                    foreach ($errors as $key => $error) {
+                                                        $errorToBeReturn[] = str_replace(".", "", $error[0]) . " for sku " . $csvData[$i]['sku'];
+                                                    }
+
+                                                    $productUploadedWithError = $requestData['productUploaded'] + 1;
+
+                                                    $requestData['countOfStartedProfiles'] = $i + 1;
+
+                                                    if ($requestData['numberOfCSVRecord'] != 0) {
+                                                        $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $productUploadedWithError;
+                                                    } else {
+                                                        $remainDataInCSV = 0;
+                                                    }
+
+                                                    $dataToBeReturn = array(
+                                                        'remainDataInCSV' => $remainDataInCSV,
+                                                        'productsUploaded' => $requestData['productUploaded'],
+                                                        'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
+                                                        'error' => $errorToBeReturn,
+                                                    );
+
+                                                    return $dataToBeReturn;
+                                                }
+
+                                                $inventory_data = core()->getCurrentChannel()->inventory_sources;
+
+                                                foreach ($inventory_data as $key => $datas) {
+                                                    $inventoryId = $datas->id;
+                                                }
+
+                                                $inventoryData[] = (string)$csvData[$i]['super_attribute_qty'];
+
+                                                foreach ($inventoryData as $key => $d) {
+                                                    $inventory[$inventoryId] = $d;
+                                                }
+
+                                                $productInventory = $this->productInventoryRepository->findOneByField('product_id', $configSimpleproduct->id);
+
+                                                if (!isset($productInventory) && empty($productInventory) || $productInventory->count() < 1) {
+                                                    $data['inventories'] = $inventory;
+                                                }
+
+                                                $superAttributes = explode(',', $csvData[$i]['super_attributes']);
+                                                $superAttributesOption = explode(',', $csvData[$i]['super_attribute_option']);
+
+                                                $data['super_attributes'] = array_combine($superAttributes, $superAttributesOption);
+
+                                                if (isset($data['super_attributes']) && $i == $current) {
+                                                    $super_attributes = [];
+
+                                                    foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
+                                                        $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
+
+                                                        $super_attributes[$attribute->id] = $attributeOptions;
+
+                                                        $users = $product->super_attributes()->where('id', $attribute->id)->exists();
+
+                                                        if (!$users) {
+                                                            $product->super_attributes()->attach($attribute->id);
+                                                        }
+                                                    }
+                                                }
+
+                                                $data['dataFlowProfileRecordId'] = $dataFlowProfileRecord->id;
+                                                $data['channel'] = core()->getCurrentChannel()->code;
+
+                                                $dataProfile = app('Webkul\Bulkupload\Repositories\DataFlowProfileRepository')->findOneByfield(['id' => $data['dataFlowProfileRecordId']]);
+                                                $data['locale'] = $dataProfile->locale_code;
+
+                                                $data['price'] = (string)$csvData[$i]['super_attribute_price'];
+                                                $data['special_price'] = (string)$csvData[$i]['special_price'];
+                                                $data['special_price_from'] = (string)$csvData[$i]['special_price_from'];
+                                                $data['special_price_to'] = (string)$csvData[$i]['special_price_to'];
+                                                $data['new'] = (string)$csvData[$i]['new'];
+                                                $data['featured'] = (string)$csvData[$i]['featured'];
+                                                $data['visible_individually'] = (string)$csvData[$i]['visible_individually'];
+                                                $data['tax_category_id'] = (string)$csvData[$i]['tax_category_id'];
+                                                $data['cost'] = (string)$csvData[$i]['cost'];
+                                                $data['width'] = (string)$csvData[$i]['width'];
+                                                $data['height'] = (string)$csvData[$i]['height'];
+                                                $data['depth'] = (string)$csvData[$i]['depth'];
+                                                $data['status'] = (string)$csvData[$i]['status'];
+                                                $data['attribute_family_id'] = $attributeFamilyData->id;
+                                                $data['short_description'] = (string)$csvData[$i]['short_description'];
+                                                $data['sku'] = (string)$csvData[$i]['sku'];
+                                                $data['name'] = (string)$csvData[$i]['name'];
+                                                $data['weight'] = (string)$csvData[$i]['super_attribute_weight'];
+                                                $data['status'] = (string)$csvData[$i]['status'];
+                                                $data['url_link'] = (string)$csvData[$i]['url_link'];
+                                                $data['max_price'] = (string)round($data['price']);
+
+                                                if (isset($data['super_attributes'])) {
+                                                    foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
+                                                        $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
+
+                                                        if ($attribute) {
+                                                            $attributeOptionColor = $this->attributeOptionRepository->findOneWhere([
+                                                                'attribute_id' => $attribute->id,
+                                                                'admin_name' => $attributeOptions,
+                                                            ]);
+
+                                                            if (is_null($attributeOptionColor)) {
+
+                                                                $localeArray = array(
+                                                                    'en',
+                                                                    'fr',
+                                                                    'nl',
+                                                                    'tr',
+                                                                    'es'
+                                                                );
+
+                                                                $colourSortOrderLatest = DB::table('attribute_options')->where('attribute_id', '=', $attribute->id)->latest('sort_order')->first();
+                                                                $attributeOptionColor = new AttributeOption();
+                                                                $attributeOptionColor->admin_name = $attributeOptions;
+                                                                $attributeOptionColor->sort_order = $colourSortOrderLatest->sort_order + 1;
+                                                                $attributeOptionColor->attribute_id = $attribute->id;
+                                                                $attributeOptionColor->save();
+
+                                                                $colourSortOrderLatestId = DB::table('attribute_options')->where('attribute_id', '=', $attribute->id)->latest('sort_order')->first();
+
+                                                                foreach ($localeArray as $locale) {
+                                                                    $attributeOptionTranslation = new AttributeOptionTranslation();
+
+                                                                    $attributeOptionTranslation->locale = $locale;
+                                                                    $attributeOptionTranslation->label = $locale === 'en' ? $attributeOptions : '';
+                                                                    $attributeOptionTranslation->attribute_option_id = $colourSortOrderLatestId->id;
+                                                                    $attributeOptionTranslation->save();
+                                                                }
+                                                            }
+
+                                                            $data[$attributeCode] = $attributeOptionColor->id;
+                                                        }
+                                                    }
+                                                }
+
+                                                $individualProductimages = explode(',', $csvData[$i]['images']);
+
+                                                if (isset($imageZipName)) {
+                                                    $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
+
+                                                    foreach ($images as $imageArraykey => $imagePath) {
+                                                        $imageName = explode('/', $imagePath);
+
+                                                        if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
+                                                            $data['images'][$imageArraykey] = $imagePath;
+                                                        }
+                                                    }
+                                                } else if (isset($csvData['images'])) {
+                                                    foreach ($individualProductimages as $imageArraykey => $imageURL) {
+                                                        if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
+                                                            $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
+
+                                                            if (!file_exists($imagePath)) {
+                                                                mkdir($imagePath, 0777, true);
+                                                            }
+
+                                                            $imageFile = $imagePath . '/' . basename($imageURL);
+
+                                                            file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+
+                                                            $data['images'][$imageArraykey] = $imageFile;
+                                                        }
+                                                    }
+                                                }
+
+                                                $configSimpleProductAttributeStore = $this->bulkProductRepository->productRepositoryUpdateForVariants($data, $configSimpleproduct->id);
+
+                                                if (isset($imageZipName)) {
+                                                    $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName);
+                                                } else if (isset($csvData['images'])) {
+                                                    $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName = null);
+                                                }
+
+//                                            $configSimpleProductAttributeStore['parent_id'] = $product['productFlatId'];
+                                                $configSimpleProductAttributeStore->parent_id = null;
+
+                                                $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price']);
+
+                                            } else {
+                                                $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount']);
+
+                                                $savedProduct = $requestData['productUploaded'] + 1;
+                                                $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $savedProduct;
+                                                $productsUploaded = $savedProduct;
+
+                                                $requestData['countOfStartedProfiles'] = $product['loopCount'];
 
                                                 $dataToBeReturn = array(
                                                     'remainDataInCSV' => $remainDataInCSV,
-                                                    'productsUploaded' => $requestData['productUploaded'],
-                                                    'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
-                                                    'error' => $errorToBeReturn,
+                                                    'productsUploaded' => $productsUploaded,
+                                                    'countOfStartedProfiles' => $requestData['countOfStartedProfiles']
                                                 );
 
                                                 return $dataToBeReturn;
                                             }
+                                        }
+//                                        }
 
-                                            $inventory_data = core()->getCurrentChannel()->inventory_sources;
+                                        if ($requestData['errorCount'] == 0) {
+                                            $dataToBeReturn = [
+                                                'remainDataInCSV' => 0,
+                                                'productsUploaded' => $requestData['totalNumberOfCSVRecord'],
+                                                'countOfStartedProfiles' => count($csvData),
+                                            ];
 
-                                            foreach ($inventory_data as $key => $datas) {
-                                                $inventoryId = $datas->id;
-                                            }
-
-                                            $inventoryData[] = (string)$csvData[$i]['super_attribute_qty'];
-
-                                            foreach ($inventoryData as $key => $d) {
-                                                $inventory[$inventoryId] = $d;
-                                            }
-
-                                            $productInventory = $this->productInventoryRepository->findOneByField('product_id', $configSimpleproduct->id);
-
-                                            if (!isset($productInventory) && empty($productInventory) || $productInventory->count() < 1) {
-                                                $data['inventories'] = $inventory;
-                                            }
-
-                                            $superAttributes = explode(',', $csvData[$i]['super_attributes']);
-                                            $superAttributesOption = explode(',', $csvData[$i]['super_attribute_option']);
-
-                                            $data['super_attributes'] = array_combine($superAttributes, $superAttributesOption);
-
-                                            if (isset($data['super_attributes']) && $i == $current) {
-                                                $super_attributes = [];
-
-                                                foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
-                                                    $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
-
-                                                    $super_attributes[$attribute->id] = $attributeOptions;
-
-                                                    $users = $product->super_attributes()->where('id', $attribute->id)->exists();
-
-                                                    if (!$users) {
-                                                        $product->super_attributes()->attach($attribute->id);
-                                                    }
-                                                }
-                                            }
-
-                                            $data['dataFlowProfileRecordId'] = $dataFlowProfileRecord->id;
-                                            $data['channel'] = core()->getCurrentChannel()->code;
-
-                                            $dataProfile = app('Webkul\Bulkupload\Repositories\DataFlowProfileRepository')->findOneByfield(['id' => $data['dataFlowProfileRecordId']]);
-                                            $data['locale'] = $dataProfile->locale_code;
-
-                                            $data['price'] = (string)$csvData[$i]['super_attribute_price'];
-                                            $data['special_price'] = (string)$csvData[$i]['special_price'];
-                                            $data['special_price_from'] = (string)$csvData[$i]['special_price_from'];
-                                            $data['special_price_to'] = (string)$csvData[$i]['special_price_to'];
-                                            $data['new'] = (string)$csvData[$i]['new'];
-                                            $data['featured'] = (string)$csvData[$i]['featured'];
-                                            $data['visible_individually'] = (string)$csvData[$i]['visible_individually'];
-                                            $data['tax_category_id'] = (string)$csvData[$i]['tax_category_id'];
-                                            $data['cost'] = (string)$csvData[$i]['cost'];
-                                            $data['width'] = (string)$csvData[$i]['width'];
-                                            $data['height'] = (string)$csvData[$i]['height'];
-                                            $data['depth'] = (string)$csvData[$i]['depth'];
-                                            $data['status'] = (string)$csvData[$i]['status'];
-                                            $data['attribute_family_id'] = $attributeFamilyData->id;
-                                            $data['short_description'] = (string)$csvData[$i]['short_description'];
-                                            $data['sku'] = (string)$csvData[$i]['sku'];
-                                            $data['name'] = (string)$csvData[$i]['name'];
-                                            $data['weight'] = (string)$csvData[$i]['super_attribute_weight'];
-                                            $data['status'] = (string)$csvData[$i]['status'];
-                                            $data['url_link'] = (string)$csvData[$i]['url_link'];
-                                            $data['max_price'] = (string)round($data['price']);
-
-                                            if (isset($data['super_attributes'])) {
-                                                foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
-                                                    $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
-
-                                                    if ($attribute) {
-                                                        $attributeOptionColor = $this->attributeOptionRepository->findOneWhere([
-                                                            'attribute_id' => $attribute->id,
-                                                            'admin_name' => $attributeOptions,
-                                                        ]);
-
-                                                        $data[$attributeCode] = $attributeOptionColor->id;
-                                                    }
-                                                }
-                                            }
-
-                                            $individualProductimages = explode(',', $csvData[$i]['images']);
-
-                                            if (isset($imageZipName)) {
-                                                $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
-
-                                                foreach ($images as $imageArraykey => $imagePath) {
-                                                    $imageName = explode('/', $imagePath);
-
-                                                    if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
-                                                        $data['images'][$imageArraykey] = $imagePath;
-                                                    }
-                                                }
-                                            } else if (isset($csvData['images'])) {
-                                                foreach ($individualProductimages as $imageArraykey => $imageURL) {
-                                                    if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
-                                                        $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
-
-                                                        if (!file_exists($imagePath)) {
-                                                            mkdir($imagePath, 0777, true);
-                                                        }
-
-                                                        $imageFile = $imagePath . '/' . basename($imageURL);
-
-                                                        file_put_contents($imageFile, file_get_contents(trim($imageURL)));
-
-                                                        $data['images'][$imageArraykey] = $imageFile;
-                                                    }
-                                                }
-                                            }
-
-                                            $configSimpleProductAttributeStore = $this->bulkProductRepository->productRepositoryUpdateForVariants($data, $configSimpleproduct->id);
-
-                                            if (isset($imageZipName)) {
-                                                $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName);
-                                            } else if (isset($csvData['images'])) {
-                                                $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName = null);
-                                            }
-
-//                                            $configSimpleProductAttributeStore['parent_id'] = $product['productFlatId'];
-                                            $configSimpleProductAttributeStore->parent_id = null;
-
-                                            $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price']);
-
+                                            return $dataToBeReturn;
                                         } else {
-                                            $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount']);
-
-                                            $savedProduct = $requestData['productUploaded'] + 1;
-                                            $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $savedProduct;
-                                            $productsUploaded = $savedProduct;
-
-                                            $requestData['countOfStartedProfiles'] = $product['loopCount'];
-
-                                            $dataToBeReturn = array(
-                                                'remainDataInCSV' => $remainDataInCSV,
-                                                'productsUploaded' => $productsUploaded,
-                                                'countOfStartedProfiles' => $requestData['countOfStartedProfiles']
-                                            );
+                                            $dataToBeReturn = [
+                                                'remainDataInCSV' => 0,
+                                                'productsUploaded' => $requestData['totalNumberOfCSVRecord'] - $requestData['errorCount'],
+                                                'countOfStartedProfiles' => count($csvData),
+                                            ];
 
                                             return $dataToBeReturn;
                                         }
-                                    }
-//                                        }
 
-                                    if ($requestData['errorCount'] == 0) {
-                                        $dataToBeReturn = [
-                                            'remainDataInCSV' => 0,
-                                            'productsUploaded' => $requestData['totalNumberOfCSVRecord'],
-                                            'countOfStartedProfiles' => count($csvData),
-                                        ];
+                                        $product['productFlatId'] = null;
+                                    } catch (\Exception $e) {
+                                        $error = $e;
+                                        $requestData['countOfStartedProfiles'] = $i + 1;
+                                        $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $requestData['productUploaded'];
 
-                                        return $dataToBeReturn;
-                                    } else {
-                                        $dataToBeReturn = [
-                                            'remainDataInCSV' => 0,
-                                            'productsUploaded' => $requestData['totalNumberOfCSVRecord'] - $requestData['errorCount'],
-                                            'countOfStartedProfiles' => count($csvData),
-                                        ];
+                                        $dataToBeReturn = array(
+                                            'remainDataInCSV' => $remainDataInCSV,
+                                            'productsUploaded' => $requestData['productUploaded'],
+                                            'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
+                                            'error' => $error->errorInfo[2] ?? $error->getMessage(),
+                                        );
 
                                         return $dataToBeReturn;
                                     }
-
-                                    $product['productFlatId'] = null;
-                                } catch (\Exception $e) {
-                                    $error = $e;
-                                    $requestData['countOfStartedProfiles'] = $i + 1;
-                                    $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $requestData['productUploaded'];
-
-                                    $dataToBeReturn = array(
-                                        'remainDataInCSV' => $remainDataInCSV,
-                                        'productsUploaded' => $requestData['productUploaded'],
-                                        'countOfStartedProfiles' => $requestData['countOfStartedProfiles'],
-                                        'error' => $error->errorInfo[2] ?? $error->getMessage(),
-                                    );
-
-                                    return $dataToBeReturn;
                                 }
                             }
                         }
