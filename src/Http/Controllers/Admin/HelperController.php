@@ -350,19 +350,21 @@ class HelperController extends Controller
             }
 
             $csvData = call_user_func_array('array_merge', $csvDataArray);
-
 //
 //            if (isset($dataFlowProfileRecord->image_path) && ($dataFlowProfileRecord->image_path != "") ) {
 //                $imageZipName = $this->storeImageZip($dataFlowProfileRecord);
 //            }
 //
             if ($requestData['numberOfCSVRecord'] >= 0) {
-                for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
-                    $product['loopCount'] = $i;
-                    $apiProduct = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+//                for ($i = $requestData['countOfStartedProfiles']; $i < count($csvData); $i++) {
+//                    $product['loopCount'] = $i;
+//                    $apiProduct = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+//                }
 
-                    return response()->json($apiProduct);
-                }
+                $apiProduct = $this->configurableProductRepository->createApiProduct($requestData, $imageZipName, $product);
+
+
+                return response()->json($apiProduct);
             } else {
                 return response()->json([
                     "success" => true,

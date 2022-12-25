@@ -2,11 +2,14 @@
 
 namespace Webkul\Bulkupload\Repositories\Products;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Container\Container as App;
 use Webkul\Admin\Imports\DataGridImport;
 use Illuminate\Support\Facades\Schema;
+use Webkul\Attribute\Models\AttributeOption;
+use Webkul\Attribute\Models\AttributeOptionTranslation;
 use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Product\Models\ProductAttributeValue;
 use Webkul\Core\Eloquent\Repository;
@@ -639,17 +642,18 @@ class ConfigurableProductRepository extends Repository
             $requestData['countOfStartedProfiles'] = $numRows;
             $fileCount                             = 0;
 
-            $directory    = __DIR__.'/../../../../../../../../Data';
-            $filesArray   = scandir($directory);
-            $csvDataArray = array();
-
-            foreach ($filesArray as $file) {
-                if (strpos($file, 'bulkconfigurableproductupload') !== false) {
-                    $fileCount++;
-                }
-            }
-
             if ($dataFlowProfileRecord) {
+
+                $directory    = __DIR__.'/../../../../../../../../Data';
+                $filesArray   = scandir($directory);
+                $csvDataArray = array();
+
+                foreach ($filesArray as $file) {
+                    if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                        $fileCount++;
+                    }
+                }
+
                 for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
                     $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
                 }
@@ -1005,6 +1009,35 @@ class ConfigurableProductRepository extends Repository
                                                             'admin_name' => $attributeOptions,
                                                         ]);
 
+                                                        if (is_null($attributeOptionColor)) {
+
+                                                            $localeArray = array(
+                                                                'en',
+                                                                'fr',
+                                                                'nl',
+                                                                'tr',
+                                                                'es'
+                                                            );
+
+                                                            $colourSortOrderLatest              = DB::table('attribute_options')->where('attribute_id', '=', $attribute->id)->latest('sort_order')->first();
+                                                            $attributeOptionColor               = new AttributeOption();
+                                                            $attributeOptionColor->admin_name   = $attributeOptions;
+                                                            $attributeOptionColor->sort_order   = $colourSortOrderLatest->sort_order+1;
+                                                            $attributeOptionColor->attribute_id = $attribute->id;
+                                                            $attributeOptionColor->save();
+
+                                                            $colourSortOrderLatestId = DB::table('attribute_options')->where('attribute_id', '=', $attribute->id)->latest('sort_order')->first();
+
+                                                            foreach ($localeArray as $locale) {
+                                                                $attributeOptionTranslation = new AttributeOptionTranslation();
+
+                                                                $attributeOptionTranslation->locale              = $locale;
+                                                                $attributeOptionTranslation->label               = $locale === 'en' ? $attributeOptions : '';
+                                                                $attributeOptionTranslation->attribute_option_id = $colourSortOrderLatestId->id;
+                                                                $attributeOptionTranslation->save();
+                                                            }
+                                                        }
+
                                                         $data[$attributeCode] = $attributeOptionColor->id;
                                                     }
                                                 }
@@ -1071,7 +1104,7 @@ class ConfigurableProductRepository extends Repository
                                             return $dataToBeReturn;
                                         }
                                     }
-//                                    }
+//                                        }
 
                                     if ($requestData['errorCount'] == 0) {
                                         $dataToBeReturn = [
