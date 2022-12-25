@@ -637,9 +637,24 @@ class ConfigurableProductRepository extends Repository
             ('data_flow_profile_id', $requestData['data_flow_profile_id']);
 
             $requestData['countOfStartedProfiles'] = $numRows;
+            $fileCount                             = 0;
+
+            $directory    = __DIR__.'/../../../../../../../../Data';
+            $filesArray   = scandir($directory);
+            $csvDataArray = array();
+
+            foreach ($filesArray as $file) {
+                if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                    $fileCount++;
+                }
+            }
 
             if ($dataFlowProfileRecord) {
-                $csvData = (new DataGridImport)->toArray(__DIR__.'/../../../../../../../../Data/bulkconfigurableproductupload.csv')[0];
+                for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                }
+
+                $csvData = call_user_func_array('array_merge', $csvDataArray);
 
                 foreach ($csvData as $key => $value) {
                     if ($requestData['numberOfCSVRecord'] >= 0) {
@@ -650,24 +665,24 @@ class ConfigurableProductRepository extends Repository
                                 try {
                                     $createValidation = $this->helperRepository->createProductValidation($csvData[$i], $i);
 
-                                    if ( isset($createValidation)) {
+                                    if (isset($createValidation)) {
                                         return $createValidation;
                                     }
 
                                     unset($data);
 
                                     $productFlatData = $this->productFlatRepository->findOneWhere([
-                                        'sku'       => $csvData[$i]['sku'],
-                                        'url_key'   => $csvData[$i]['url_key']
+                                        'sku' => $csvData[$i]['sku'],
+                                        'url_key' => $csvData[$i]['url_key']
                                     ]);
 
                                     $productData = $this->productRepository->findOneWhere([
-                                        'sku'   => $csvData[$i]['sku']
+                                        'sku' => $csvData[$i]['sku']
                                     ]);
 
                                     $attributeFamilyData = $this->attributeFamilyRepository->findOneByfield('name', $csvData[$i]['attribute_family_name']);
 
-                                    if (! isset($productFlatData) && empty($productData)) {
+                                    if (!isset($productFlatData) && empty($productData)) {
                                         $data['type'] = $csvData[$i]['type'];
                                         $data['attribute_family_id'] = $attributeFamilyData->id;
                                         $data['sku'] = $csvData[$i]['sku'];
@@ -700,8 +715,8 @@ class ConfigurableProductRepository extends Repository
 
                                             } else if ($value['type'] == "checkbox") {
                                                 $attributeOption = $this->attributeOptionRepository->findOneWhere([
-                                                    'attribute_id'  => $value['id'],
-                                                    'admin_name'    => $csvData[$i][$searchIndex]
+                                                    'attribute_id' => $value['id'],
+                                                    'admin_name' => $csvData[$i][$searchIndex]
                                                 ]);
 
                                                 array_push($attributeOptionArray, (isset($attributeOption['id']) ? $attributeOption['id'] : null));
@@ -740,28 +755,27 @@ class ConfigurableProductRepository extends Repository
                                     $individualProductimages = explode(',', $csvData[$i]['images']);
 
                                     if (isset($imageZipName)) {
-                                        $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/'.$dataFlowProfileRecord->id.'/'.$imageZipName['dirname'].'/');
+                                        $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
 
                                         foreach ($images as $imageArraykey => $imagePath) {
                                             $imageName = explode('/', $imagePath);
 
-                                            if (in_array(last($imageName), preg_replace('/[\'"]/', '',$individualProductimages))) {
+                                            if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
                                                 $data['images'][$imageArraykey] = $imagePath;
                                             }
                                         }
                                     } else if (isset($csvData[$i]['images'])) {
-                                        foreach ($individualProductimages as $imageArraykey => $imageURL)
-                                        {
+                                        foreach ($individualProductimages as $imageArraykey => $imageURL) {
                                             if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
 
-                                                $imagePath = __DIR__.'/../../../../../../public/imported-products/extracted-images/admin/'.   $dataFlowProfileRecord->id;
+                                                $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
 //                                                $imagePath = storage_path('app/public/imported-products/extracted-images/admin/'.   $dataFlowProfileRecord->id);
                                                 if (!file_exists($imagePath)) {
                                                     mkdir($imagePath, 0777, true);
                                                 }
 
                                                 $imageFileExploded = explode('?', $imageURL);
-                                                $imageFile = $imagePath.'/'.basename($imageFileExploded[0]) ;
+                                                $imageFile = $imagePath . '/' . basename($imageFileExploded[0]);
 
                                                 file_put_contents($imageFile, file_get_contents(trim($imageURL)));
 
@@ -778,7 +792,7 @@ class ConfigurableProductRepository extends Repository
                                         $this->productImageRepository->bulkuploadImages($data, $product, $imageZipName = null);
                                     }
 
-                                    if (! isset($productFlatData) && empty($productFlatData)) {
+                                    if (!isset($productFlatData) && empty($productFlatData)) {
                                         $productFlatData = DB::table('product_flat')->select('id')->orderBy('id', 'desc')->first();
                                     }
 
@@ -788,8 +802,8 @@ class ConfigurableProductRepository extends Repository
 
                                     unset($categoryID);
                                 } catch (\Exception $e) {
-                                    $categoryError = explode('[' ,$e->getMessage());
-                                    $categorySlugError = explode(']' ,$e->getMessage());
+                                    $categoryError = explode('[', $e->getMessage());
+                                    $categorySlugError = explode(']', $e->getMessage());
 
                                     $error = $e;
 
@@ -826,34 +840,48 @@ class ConfigurableProductRepository extends Repository
                             } else if (isset($product['productFlatId'])) {
 
                                 try {
-                                    $current = $product['loopCount'];
-                                    $num = 0;
-                                    $inventory = [];
+                                    $current      = $product['loopCount'];
+                                    $num          = 0;
+                                    $inventory    = [];
+                                    $fileCount    = 0;
+                                    $directory    = __DIR__ . '/../../../../../../../../Data';
+                                    $filesArray   = scandir($directory);
+                                    $csvDataArray = array();
 
-                                    $csvData = (new DataGridImport)->toArray(__DIR__.'/../../../../../../../../Data/bulkconfigurableproductupload.csv')[0];
+                                    foreach ($filesArray as $file) {
+                                        if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                                            $fileCount++;
+                                        }
+                                    }
+
+                                    for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                                        $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                                    }
+
+                                    $csvData = call_user_func_array('array_merge', $csvDataArray);
 
                                     for ($i = $current; $i < count($csvData); $i++) {
                                         $product['loopCount'] = $i;
 
                                         if ($csvData[$i]['type'] != 'configurable') {
                                             $productFlatData = $this->productFlatRepository->findOneWhere([
-                                                'sku'       => $csvData[$i]['sku'],
-                                                'url_key'   => null
+                                                'sku' => $csvData[$i]['sku'],
+                                                'url_key' => null
                                             ]);
 
                                             $productData = $this->productRepository->findOneWhere([
-                                                'sku'   => $csvData[$i]['sku']
+                                                'sku' => $csvData[$i]['sku']
                                             ]);
 
                                             $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
                                                 'name' => $csvData[$i]['attribute_family_name']
                                             ]);
 
-                                            if (! isset($productFlatData) && empty($productData)) {
-                                                $data['parent_id']  = $product->id;
-                                                $data['type']       = "simple";
+                                            if (!isset($productFlatData) && empty($productData)) {
+                                                $data['parent_id'] = $product->id;
+                                                $data['type'] = "simple";
                                                 $data['attribute_family_id'] = $attributeFamilyData->id;
-                                                $data['sku']        = $csvData[$i]['sku'];
+                                                $data['sku'] = $csvData[$i]['sku'];
 
                                                 $configSimpleproduct = $this->productRepository->create($data);
                                             } else {
@@ -863,12 +891,12 @@ class ConfigurableProductRepository extends Repository
                                             unset($data);
 
                                             $validateVariant = Validator::make($csvData[$i], [
-                                                'sku'                       => ['required', 'unique:products,sku,' . $configSimpleproduct->id, new \Webkul\Core\Contracts\Validations\Slug],
-                                                'name'                      => 'required',
-                                                'super_attribute_price'     => 'required',
-                                                'super_attribute_weight'    => 'required',
-                                                'super_attribute_option'    => 'required',
-                                                'super_attributes'          => 'required'
+                                                'sku' => ['required', 'unique:products,sku,' . $configSimpleproduct->id, new \Webkul\Core\Contracts\Validations\Slug],
+                                                'name' => 'required',
+                                                'super_attribute_price' => 'required',
+                                                'super_attribute_weight' => 'required',
+                                                'super_attribute_option' => 'required',
+                                                'super_attributes' => 'required'
                                             ]);
 
                                             if ($validateVariant->fails()) {
@@ -876,8 +904,8 @@ class ConfigurableProductRepository extends Repository
 
                                                 $this->helperRepository->deleteProductIfNotValidated($product->id);
 
-                                                foreach($errors as $key => $error) {
-                                                    $errorToBeReturn[] = str_replace(".", "", $error[0]). " for sku " .$csvData[$i]['sku'];
+                                                foreach ($errors as $key => $error) {
+                                                    $errorToBeReturn[] = str_replace(".", "", $error[0]) . " for sku " . $csvData[$i]['sku'];
                                                 }
 
                                                 $productUploadedWithError = $requestData['productUploaded'] + 1;
@@ -902,7 +930,7 @@ class ConfigurableProductRepository extends Repository
 
                                             $inventory_data = core()->getCurrentChannel()->inventory_sources;
 
-                                            foreach($inventory_data as $key => $datas) {
+                                            foreach ($inventory_data as $key => $datas) {
                                                 $inventoryId = $datas->id;
                                             }
 
@@ -914,8 +942,8 @@ class ConfigurableProductRepository extends Repository
 
                                             $productInventory = $this->productInventoryRepository->findOneByField('product_id', $configSimpleproduct->id);
 
-                                            if (! isset($productInventory) && empty($productInventory) || $productInventory->count() < 1) {
-                                                $data['inventories'] =  $inventory;
+                                            if (!isset($productInventory) && empty($productInventory) || $productInventory->count() < 1) {
+                                                $data['inventories'] = $inventory;
                                             }
 
                                             $superAttributes = explode(',', $csvData[$i]['super_attributes']);
@@ -933,7 +961,7 @@ class ConfigurableProductRepository extends Repository
 
                                                     $users = $product->super_attributes()->where('id', $attribute->id)->exists();
 
-                                                    if (! $users) {
+                                                    if (!$users) {
                                                         $product->super_attributes()->attach($attribute->id);
                                                     }
                                                 }
@@ -967,14 +995,14 @@ class ConfigurableProductRepository extends Repository
                                             $data['url_link'] = (string)$csvData[$i]['url_link'];
                                             $data['max_price'] = (string)round($data['price']);
 
-                                            if ( isset($data['super_attributes'])) {
+                                            if (isset($data['super_attributes'])) {
                                                 foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
                                                     $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
 
-                                                    if ( $attribute ) {
+                                                    if ($attribute) {
                                                         $attributeOptionColor = $this->attributeOptionRepository->findOneWhere([
-                                                            'attribute_id'  => $attribute->id,
-                                                            'admin_name'    => $attributeOptions,
+                                                            'attribute_id' => $attribute->id,
+                                                            'admin_name' => $attributeOptions,
                                                         ]);
 
                                                         $data[$attributeCode] = $attributeOptionColor->id;
@@ -985,26 +1013,25 @@ class ConfigurableProductRepository extends Repository
                                             $individualProductimages = explode(',', $csvData[$i]['images']);
 
                                             if (isset($imageZipName)) {
-                                                $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/'.$dataFlowProfileRecord->id.'/'.$imageZipName['dirname'].'/');
+                                                $images = Storage::disk('local')->files('public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id . '/' . $imageZipName['dirname'] . '/');
 
                                                 foreach ($images as $imageArraykey => $imagePath) {
                                                     $imageName = explode('/', $imagePath);
 
-                                                    if (in_array(last($imageName), preg_replace('/[\'"]/', '',$individualProductimages))) {
+                                                    if (in_array(last($imageName), preg_replace('/[\'"]/', '', $individualProductimages))) {
                                                         $data['images'][$imageArraykey] = $imagePath;
                                                     }
                                                 }
                                             } else if (isset($csvData['images'])) {
-                                                foreach ($individualProductimages as $imageArraykey => $imageURL)
-                                                {
+                                                foreach ($individualProductimages as $imageArraykey => $imageURL) {
                                                     if (filter_var(trim($imageURL), FILTER_VALIDATE_URL)) {
-                                                        $imagePath = __DIR__.'/../../../../../../public/imported-products/extracted-images/admin/'.   $dataFlowProfileRecord->id;
+                                                        $imagePath = __DIR__ . '/../../../../../../public/imported-products/extracted-images/admin/' . $dataFlowProfileRecord->id;
 
                                                         if (!file_exists($imagePath)) {
                                                             mkdir($imagePath, 0777, true);
                                                         }
 
-                                                        $imageFile = $imagePath.'/'.basename($imageURL) ;
+                                                        $imageFile = $imagePath . '/' . basename($imageURL);
 
                                                         file_put_contents($imageFile, file_get_contents(trim($imageURL)));
 
@@ -1044,6 +1071,7 @@ class ConfigurableProductRepository extends Repository
                                             return $dataToBeReturn;
                                         }
                                     }
+//                                    }
 
                                     if ($requestData['errorCount'] == 0) {
                                         $dataToBeReturn = [
@@ -1082,6 +1110,7 @@ class ConfigurableProductRepository extends Repository
                         }
                     }
                 }
+//                }
             }
         } catch(\Exception $e) {
             \Log::error('configurable create product log: '. $e->getMessage());
