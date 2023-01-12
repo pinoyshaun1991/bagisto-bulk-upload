@@ -632,7 +632,7 @@ class ConfigurableProductRepository extends Repository
      *
      * @return mixed
      */
-    public function createApiProduct($requestData = array(), $imageZipName = array(), $product = array(), $numRows = 0)
+    public function createApiProduct($requestData = array(), $imageZipName = array(), $product = array(), $numRows = 0, $fileNumber = 0)
     {
         try {
             /** @todo: get created csv file **/
@@ -641,20 +641,25 @@ class ConfigurableProductRepository extends Repository
 
             $requestData['countOfStartedProfiles'] = $numRows;
             $fileCount                             = 0;
+            $requestData['errorCount']             = 0;
+            $requestData['totalNumberOfCSVRecord'] = 0;
+            $requestData['productUploaded']        = 0;
 
             if ($dataFlowProfileRecord) {
 
                 $directory    = __DIR__.'/../../../../../../../../Data';
                 $filesArray   = scandir($directory);
                 $csvDataArray = array();
+                $iFile        = $fileNumber;
 
                 foreach ($filesArray as $file) {
                     if (strpos($file, 'bulkconfigurableproductupload') !== false) {
                         $fileCount++;
                     }
                 }
-
-                for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+//print_r('File 2: '.$iFile);
+                while ($iFile <= $fileCount) {
+//                    print("Reading file: ".$iFile);
 //                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
                     $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
 //                }
@@ -852,6 +857,7 @@ class ConfigurableProductRepository extends Repository
                                         $directory = __DIR__ . '/../../../../../../../../Data';
                                         $filesArray = scandir($directory);
                                         $csvDataArray = array();
+                                        $iFile = $fileNumber;
 
                                         foreach ($filesArray as $file) {
                                             if (strpos($file, 'bulkconfigurableproductupload') !== false) {
@@ -859,7 +865,7 @@ class ConfigurableProductRepository extends Repository
                                             }
                                         }
 
-                                        for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                                        while ($iFile < $fileCount) {
 //                                            $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
                                             $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
 //                                        }
@@ -1089,7 +1095,7 @@ class ConfigurableProductRepository extends Repository
                                                     $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price']);
 
                                                 } else {
-                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount']);
+                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount'], $fileNumber+1);
 
                                                     $savedProduct = $requestData['productUploaded'] + 1;
                                                     $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $savedProduct;
@@ -1103,9 +1109,11 @@ class ConfigurableProductRepository extends Repository
                                                         'countOfStartedProfiles' => $requestData['countOfStartedProfiles']
                                                     );
 
-                                                    return $dataToBeReturn;
+//                                                    return $dataToBeReturn;
                                                 }
                                             }
+
+                                            $iFile++;
                                         }
 //                                        }
 
@@ -1146,6 +1154,8 @@ class ConfigurableProductRepository extends Repository
                             }
                         }
                     }
+
+                    $iFile++;
                 }
 //                }
             }
