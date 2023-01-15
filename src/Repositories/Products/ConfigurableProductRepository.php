@@ -183,6 +183,7 @@ class ConfigurableProductRepository extends Repository
             ('data_flow_profile_id', $requestData['data_flow_profile_id']);
 
             if ($dataFlowProfileRecord) {
+                $csvData = array();
                 $csvData = (new DataGridImport)->toArray($dataFlowProfileRecord->file_path)[0];
 
                 foreach ($csvData as $key => $value) {
@@ -369,6 +370,7 @@ class ConfigurableProductRepository extends Repository
                                     $current = $product['loopCount'];
                                     $num = 0;
                                     $inventory = [];
+                                    $csvData = array();
 
                                     $csvData = (new DataGridImport)->toArray($dataFlowProfileRecord->file_path)[0];
 
@@ -659,6 +661,7 @@ class ConfigurableProductRepository extends Repository
                 }
 //print_r('File 2: '.$iFile);
                 while ($iFile <= $fileCount) {
+                    $csvData = array();
 //                    print("Reading file: ".$iFile);
 //                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
                     $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
@@ -866,6 +869,7 @@ class ConfigurableProductRepository extends Repository
                                         }
 
                                         while ($iFile < $fileCount) {
+                                            $csvData = array();
 //                                            $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
                                             $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
 //                                        }
