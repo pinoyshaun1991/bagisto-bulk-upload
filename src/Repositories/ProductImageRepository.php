@@ -2,8 +2,10 @@
 
 namespace Webkul\Bulkupload\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Core\Eloquent\Repository;
+use Webkul\Product\Models\ProductImage;
 
 /**
  * Product Image Repository
@@ -96,10 +98,17 @@ class ProductImageRepository extends Repository
                 copy($files, $destination);
 //                Storage::copy($files, $destination);
 
-                $this->create([
-                    'path' => '/images/product/' . $product->id .'/'. basename($value),
-                    'product_id' => $product->id
-                ]);
+                $productExist = $this->findOneByField('product_id', $product->id);
+
+                if (!$productExist instanceof ProductImage) {
+                    $this->create([
+                        'path' => '/images/product/' . $product->id . '/' . basename($value),
+                        'product_id' => $product->id
+                    ]);
+                }
+
+//                $values = array('path' => '/images/product/' . $product->id .'/'. basename($value),'product_id' => $product->id);
+//                DB::table('product_images')->insert($values);
             }
         }
     }

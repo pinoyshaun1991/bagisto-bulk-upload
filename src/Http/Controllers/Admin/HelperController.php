@@ -329,7 +329,7 @@ class HelperController extends Controller
         $product                               = [];
         $imageZipName                          = null;
         $fileCount                             = 0;
-        ProductImage::query()->truncate();
+//        ProductImage::query()->truncate();
 
         $dataFlowProfileRecord = $this->importProductRepository->findOneByField
         ('data_flow_profile_id', $requestData['data_flow_profile_id']);
@@ -339,15 +339,15 @@ class HelperController extends Controller
         $csvDataArray = array();
 
         foreach ($filesArray as $file) {
-            if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+            if (strpos($file, 'bulkconfigurableproductupload_0') !== false) {
                 $fileCount++;
             }
         }
 
         if ($dataFlowProfileRecord) {
-            for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
-                $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
-            }
+//            for ($iFile = $requestData['countOfStartedFiles']; $iFile < $fileCount; $iFile++) {
+                $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../../Data/bulkconfigurableproductupload_0.csv')[0]; #__DIR__.'/../../../../../../../../../Data/bulkconfigurableproductupload.csv'
+//            }
 
             $csvData = call_user_func_array('array_merge', $csvDataArray);
 //

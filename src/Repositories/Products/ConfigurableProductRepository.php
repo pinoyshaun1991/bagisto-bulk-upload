@@ -646,6 +646,7 @@ class ConfigurableProductRepository extends Repository
             $requestData['errorCount']             = 0;
             $requestData['totalNumberOfCSVRecord'] = 0;
             $requestData['productUploaded']        = 0;
+            $fileFound                             = false;
 
             if ($dataFlowProfileRecord) {
 
@@ -655,7 +656,7 @@ class ConfigurableProductRepository extends Repository
                 $iFile        = $fileNumber;
 
                 foreach ($filesArray as $file) {
-                    if (strpos($file, 'bulkconfigurableproductupload') !== false) {
+                    if (strpos($file, 'bulkconfigurableproductupload_0') !== false) {
                         $fileCount++;
                     }
                 }
@@ -664,7 +665,7 @@ class ConfigurableProductRepository extends Repository
                     $csvData = array();
 //                    print("Reading file: ".$iFile);
 //                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
-                    $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                    $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv')[0];
 //                }
 
 //                $csvData = call_user_func_array('array_merge', $csvDataArray);
@@ -871,7 +872,7 @@ class ConfigurableProductRepository extends Repository
                                         while ($iFile < $fileCount) {
                                             $csvData = array();
 //                                            $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
-                                            $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
+                                            $csvData = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv')[0];
 //                                        }
 
 //                                        $csvData = call_user_func_array('array_merge', $csvDataArray);
@@ -1089,7 +1090,7 @@ class ConfigurableProductRepository extends Repository
 
                                                     if (isset($imageZipName)) {
                                                         $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName);
-                                                    } else if (isset($csvData['images'])) {
+                                                    } else if (isset($csvData[$i]['images']) || isset($csvData['images'])) {
                                                         $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName = null);
                                                     }
 
@@ -1098,8 +1099,20 @@ class ConfigurableProductRepository extends Repository
 
                                                     $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price']);
 
+                                                    /** Rename next file to bulkconfigurableproductupload_0.csv file **/
+                                                    /** Loop through $filesArray and get 1st item **/
+//                                                    $fileFound = false;
+//                                                    unlink(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+
+                                                    foreach ($filesArray as $file) {
+                                                        if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
+                                                            rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+                                                            $fileFound = true;
+                                                        }
+                                                    }
+
                                                 } else {
-                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount'], $fileNumber+1);
+//                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount'], $fileNumber+1);
 
                                                     $savedProduct = $requestData['productUploaded'] + 1;
                                                     $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $savedProduct;
@@ -1113,7 +1126,19 @@ class ConfigurableProductRepository extends Repository
                                                         'countOfStartedProfiles' => $requestData['countOfStartedProfiles']
                                                     );
 
-//                                                    return $dataToBeReturn;
+                                                    /** Rename next file to bulkconfigurableproductupload_0.csv file **/
+                                                    /** Loop through $filesArray and get 1st item **/
+//                                                    $fileFound = false;
+//                                                    unlink(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+
+                                                    foreach ($filesArray as $file) {
+                                                        if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
+                                                            rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+                                                            $fileFound = true;
+                                                        }
+                                                    }
+
+                                                    return $dataToBeReturn;
                                                 }
                                             }
 
