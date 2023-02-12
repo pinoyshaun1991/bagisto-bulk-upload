@@ -814,6 +814,30 @@ class ConfigurableProductRepository extends Repository
 
                                         $arr[] = $productFlatData->id;
 
+                                        $productFlatDataCreate = $this->productFlatRepository->findOneWhere([
+                                            'sku' => $csvData[$i]['sku'],
+                                            'url_key' => null
+                                        ]);
+
+                                        $productData = $this->productRepository->findOneWhere([
+                                            'sku' => $csvData[$i]['sku']
+                                        ]);
+
+                                        $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
+                                            'name' => $csvData[$i]['attribute_family_name']
+                                        ]);
+
+                                        if (empty($productFlatDataCreate) && empty($productData)) {
+                                            $data['parent_id'] = $product->id;
+                                            $data['type'] = "simple";
+                                            $data['attribute_family_id'] = $attributeFamilyData->id;
+                                            $data['sku'] = $csvData[$i]['sku'];
+
+                                            $this->productRepository->create($data);
+                                        } else {
+                                            $productData;
+                                        }
+
                                         unset($categoryID);
                                     } catch (\Exception $e) {
                                         $categoryError = explode('[', $e->getMessage());
@@ -894,7 +918,7 @@ class ConfigurableProductRepository extends Repository
                                                         'name' => $csvData[$i]['attribute_family_name']
                                                     ]);
 
-                                                    if (!isset($productFlatData) && empty($productData)) {
+                                                    if (empty($productFlatData) && empty($productData)) {
                                                         $data['parent_id'] = $product->id;
                                                         $data['type'] = "simple";
                                                         $data['attribute_family_id'] = $attributeFamilyData->id;
