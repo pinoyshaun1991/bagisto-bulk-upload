@@ -634,7 +634,7 @@ class ConfigurableProductRepository extends Repository
      *
      * @return mixed
      */
-    public function createApiProduct($requestData = array(), $imageZipName = array(), $product = array(), $numRows = 0, $fileNumber = 0)
+    public function createApiProduct($requestData = array(), $imageZipName = array(), $product = array(), $numRows = 0, $fileNumber = 0, $exit = false)
     {
         try {
             /** @todo: get created csv file **/
@@ -662,6 +662,10 @@ class ConfigurableProductRepository extends Repository
                 }
 //print_r('File 2: '.$iFile);
                 while ($iFile <= $fileCount) {
+//                    if ($exit) {
+//                        return true;
+//                    }
+
                     $csvData = array();
 //                    print("Reading file: ".$iFile);
 //                    $csvDataArray[] = (new DataGridImport)->toArray(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_' . $iFile . '.csv')[0];
@@ -814,29 +818,29 @@ class ConfigurableProductRepository extends Repository
 
                                         $arr[] = $productFlatData->id;
 
-                                        $productFlatDataCreate = $this->productFlatRepository->findOneWhere([
-                                            'sku' => $csvData[$i]['sku'],
-                                            'url_key' => null
-                                        ]);
-
-                                        $productData = $this->productRepository->findOneWhere([
-                                            'sku' => $csvData[$i]['sku']
-                                        ]);
-
-                                        $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
-                                            'name' => $csvData[$i]['attribute_family_name']
-                                        ]);
-
-                                        if (empty($productFlatDataCreate) && empty($productData)) {
-                                            $data['parent_id'] = $product->id;
-                                            $data['type'] = "simple";
-                                            $data['attribute_family_id'] = $attributeFamilyData->id;
-                                            $data['sku'] = $csvData[$i]['sku'];
-
-                                            $this->productRepository->create($data);
-                                        } else {
-                                            $productData;
-                                        }
+//                                        $productFlatDataCreate = $this->productFlatRepository->findOneWhere([
+//                                            'sku' => $csvData[$i]['sku'],
+//                                            'url_key' => null
+//                                        ]);
+//
+//                                        $productData = $this->productRepository->findOneWhere([
+//                                            'sku' => $csvData[$i]['sku']
+//                                        ]);
+//
+//                                        $attributeFamilyData = $this->attributeFamilyRepository->findOneWhere([
+//                                            'name' => $csvData[$i]['attribute_family_name']
+//                                        ]);
+//
+//                                        if (empty($productFlatDataCreate) && empty($productData)) {
+//                                            $data['parent_id'] = $product->id;
+//                                            $data['type'] = "simple";
+//                                            $data['attribute_family_id'] = $attributeFamilyData->id;
+//                                            $data['sku'] = $csvData[$i]['sku'];
+//
+//                                            $this->productRepository->create($data);
+//                                        } else {
+//                                            $productData;
+//                                        }
 
                                         unset($categoryID);
                                     } catch (\Exception $e) {
@@ -1033,6 +1037,7 @@ class ConfigurableProductRepository extends Repository
                                                     $data['name'] = (string)$csvData[$i]['name'];
                                                     $data['weight'] = (string)$csvData[$i]['super_attribute_weight'];
                                                     $data['status'] = (string)$csvData[$i]['status'];
+                                                    $data['url_key'] = strtolower((string)$csvData[$i]['sku']);
                                                     $data['url_link'] = (string)$csvData[$i]['url_link'];
                                                     $data['max_price'] = (string)round($data['price']);
 
@@ -1121,22 +1126,53 @@ class ConfigurableProductRepository extends Repository
 //                                            $configSimpleProductAttributeStore['parent_id'] = $product['productFlatId'];
                                                     $configSimpleProductAttributeStore->parent_id = null;
 
-                                                    $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price']);
+                                                    $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price'], $data['url_key']);
 
                                                     /** Rename next file to bulkconfigurableproductupload_0.csv file **/
                                                     /** Loop through $filesArray and get 1st item **/
 //                                                    $fileFound = false;
 //                                                    unlink(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
 
+//                                                    foreach ($filesArray as $file) {
+//                                                        if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
+//                                                            rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+//                                                            $fileFound = true;
+//                                                        }
+//                                                    }
+
+//                                                    if ($exit) {
+//                                                        echo "<pre>";
+//                                                        print_r("Exit Now!");
+//                                                        echo "</pre>";
+//                                                        die();
+//                                                        foreach ($filesArray as $file) {
+//                                                            if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
+//                                                                rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+//                                                                $fileFound = true;
+//
+////                                                                return true;
+//                                                            }
+//                                                        }
+
+//                                                        return true;
+//                                                    }
+
+                                                } else {
+                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount'], $fileNumber+1, true);
+
                                                     foreach ($filesArray as $file) {
                                                         if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
                                                             rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
                                                             $fileFound = true;
+
+//                                                                return true;
                                                         }
                                                     }
 
-                                                } else {
-//                                                    $this->createApiProduct($requestData, $imageZipName, $product, $product['loopCount'], $fileNumber+1);
+//                                                    echo "<pre>";
+//                                                    print_r($exit);
+//                                                    echo "</pre>";
+//                                                    die();
 
                                                     $savedProduct = $requestData['productUploaded'] + 1;
                                                     $remainDataInCSV = $requestData['totalNumberOfCSVRecord'] - $savedProduct;
@@ -1154,20 +1190,25 @@ class ConfigurableProductRepository extends Repository
                                                     /** Loop through $filesArray and get 1st item **/
 //                                                    $fileFound = false;
 //                                                    unlink(__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
-
-                                                    foreach ($filesArray as $file) {
-                                                        if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
-                                                            rename(__DIR__ . '/../../../../../../../../Data/'.$file,__DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
-                                                            $fileFound = true;
+                                                    if ($exit) {
+                                                        foreach ($filesArray as $file) {
+                                                            if (strpos($file, 'bulkconfigurableproductupload_') !== false && $file !== 'bulkconfigurableproductupload_0.csv' && $fileFound === false) {
+                                                                rename(__DIR__ . '/../../../../../../../../Data/' . $file, __DIR__ . '/../../../../../../../../Data/bulkconfigurableproductupload_0.csv');
+                                                                $fileFound = true;
+                                                            }
                                                         }
+
+                                                        return true;
                                                     }
 
-                                                    return $dataToBeReturn;
+//                                                    return $dataToBeReturn;
                                                 }
                                             }
 
                                             $iFile++;
                                         }
+
+                                        return $dataToBeReturn;
 //                                        }
 
                                         if ($requestData['errorCount'] == 0) {
@@ -1224,7 +1265,7 @@ class ConfigurableProductRepository extends Repository
      *
      * @return mixed
      */
-    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null)
+    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null, $urlKey = '')
     {
         static $familyAttributes = [];
 
@@ -1333,6 +1374,7 @@ class ConfigurableProductRepository extends Repository
                 $productFlat->url_link  = $urlLink;
                 $productFlat->min_price = $maxPrice;
                 $productFlat->max_price = $maxPrice;
+                $productFlat->url_key   = $urlKey;
 
                 $productFlat->save();
 
