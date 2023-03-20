@@ -465,7 +465,7 @@ class ConfigurableProductRepository extends Repository
 
                                             $data['super_attributes'] = array_combine($superAttributes, $superAttributesOption);
 
-                                            if (isset($data['super_attributes']) && $i == $current) {
+                                            if (isset($data['super_attributes']) /*&& $i == $current*/) {
                                                 $super_attributes = [];
 
                                                 foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
@@ -996,7 +996,7 @@ class ConfigurableProductRepository extends Repository
 
                                                     $data['super_attributes'] = array_combine($superAttributes, $superAttributesOption);
 
-                                                    if (isset($data['super_attributes']) && $i == $current) {
+                                                    if (isset($data['super_attributes']) /*&& $i == $current*/) {
                                                         $super_attributes = [];
 
                                                         foreach ($data['super_attributes'] as $attributeCode => $attributeOptions) {
