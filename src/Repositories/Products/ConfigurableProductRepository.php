@@ -1126,7 +1126,7 @@ class ConfigurableProductRepository extends Repository
 //                                            $configSimpleProductAttributeStore['parent_id'] = $product['productFlatId'];
                                                     $configSimpleProductAttributeStore->parent_id = null;
 
-                                                    $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price'], $data['url_key']);
+                                                    $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price'], $data['url_key'], $data);
 
                                                     /** Rename next file to bulkconfigurableproductupload_0.csv file **/
                                                     /** Loop through $filesArray and get 1st item **/
@@ -1265,7 +1265,7 @@ class ConfigurableProductRepository extends Repository
      *
      * @return mixed
      */
-    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null, $urlKey = '')
+    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null, $urlKey = '', $dataArray = array())
     {
         static $familyAttributes = [];
 
@@ -1375,6 +1375,10 @@ class ConfigurableProductRepository extends Repository
                 $productFlat->min_price = $maxPrice;
                 $productFlat->max_price = $maxPrice;
                 $productFlat->url_key   = $urlKey;
+
+                foreach($dataArray as $key => $data) {
+                    $productFlat->{$key} = $data;
+                }
 
                 $productFlat->save();
 
