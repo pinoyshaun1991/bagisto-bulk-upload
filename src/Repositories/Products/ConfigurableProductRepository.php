@@ -1410,6 +1410,10 @@ class ConfigurableProductRepository extends Repository
                     $productFlat->{$key} = $data;
                 }
 
+                foreach ($dataArray['images'] as $dataImage) {
+                    $productFlat->thumbnail = $dataImage;
+                }
+
                 $productFlat->save();
 
                 $product->parent_id--;
