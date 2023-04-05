@@ -1116,17 +1116,19 @@ class ConfigurableProductRepository extends Repository
                                             }
 
                                             $configSimpleProductAttributeStore = $this->bulkProductRepository->productRepositoryUpdateForVariants($data, $configSimpleproduct->id);
+                                            $imageProduct                      = '';
 
                                             if (isset($imageZipName)) {
                                                 $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName);
                                             } else if (isset($csvData[$i]['images']) || isset($csvData['images'])) {
                                                 $this->productImageRepository->bulkuploadImages($data, $configSimpleproduct, $imageZipName = null);
+                                                $imageProduct = $csvData[$i]['images'];
                                             }
 
 //                                            $configSimpleProductAttributeStore['parent_id'] = $product['productFlatId'];
                                             $configSimpleProductAttributeStore->parent_id = null;
 
-                                            $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price'], $data['url_key'], $data);
+                                            $this->createFlat($configSimpleProductAttributeStore, null, $data['url_link'], $data['max_price'], $data['url_key'], $data, $imageProduct);
 
                                             /** Rename next file to bulkconfigurableproductupload_0.csv file **/
                                             /** Loop through $filesArray and get 1st item **/
@@ -1291,7 +1293,7 @@ class ConfigurableProductRepository extends Repository
      *
      * @return mixed
      */
-    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null, $urlKey = '', $dataArray = array())
+    public function createFlat($product, $parentProduct = null, $urlLink = '', $maxPrice = null, $urlKey = '', $dataArray = array(), $image = '')
     {
         static $familyAttributes = [];
 
@@ -1410,10 +1412,8 @@ class ConfigurableProductRepository extends Repository
                     $productFlat->{$key} = $data;
                 }
 
-                if (array_key_exists('images', $dataArray)) {
-                    foreach ($dataArray['images'] as $dataImage) {
-                        $productFlat->thumbnail = $dataImage;
-                    }
+                if ($image !== '') {
+                    $productFlat->thumbnail = $image;
                 }
 
                 $productFlat->save();
