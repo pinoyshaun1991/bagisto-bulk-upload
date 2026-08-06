@@ -306,7 +306,11 @@ class ConfigurableProductRepository extends Repository
 
                                                 $imageFile = $imagePath.'/'.basename($imageURL) ;
 
-                                                file_put_contents($imageFile, file_get_contents (trim($imageURL)));
+                                                if (@file_get_contents(trim($imageURL))) {
+                                                    file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                } else {
+                                                    file_put_contents($imageFile, file_get_contents(__DIR__ .'/../../../../../../public/themes/velocity/assets/images/Logo.png'));
+                                                }
 
                                                 $data['images'][$imageArraykey] = $imageFile;
                                             }
@@ -546,7 +550,11 @@ class ConfigurableProductRepository extends Repository
 
                                                         $imageFile = $imagePath.'/'.basename($imageURL) ;
 
-                                                        file_put_contents($imageFile, file_get_contents (trim($imageURL)));
+                                                        if (@file_get_contents(trim($imageURL))) {
+                                                            file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                        } else {
+                                                            file_put_contents($imageFile, file_get_contents(__DIR__ .'/../../../../../../public/themes/velocity/assets/images/Logo.png'));
+                                                        }
 
                                                         $data['images'][$imageArraykey] = $imageFile;
                                                     }
@@ -795,7 +803,11 @@ class ConfigurableProductRepository extends Repository
                                                     $imageFileExploded = explode('?', $imageURL);
                                                     $imageFile = $imagePath . '/' . basename($imageFileExploded[0]);
 
-                                                    file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                    if (@file_get_contents(trim($imageURL))) {
+                                                        file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                    } else {
+                                                        file_put_contents($imageFile, file_get_contents(__DIR__ .'/../../../../../../public/themes/velocity/assets/images/Logo.png'));
+                                                    }
 
                                                     $data['images'][$imageArraykey] = $imageFile;
                                                 }
@@ -1108,7 +1120,11 @@ class ConfigurableProductRepository extends Repository
 
                                                         $imageFile = $imagePath . '/' . basename($imageURL);
 
-                                                        file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                        if (@file_get_contents(trim($imageURL))) {
+                                                            file_put_contents($imageFile, file_get_contents(trim($imageURL)));
+                                                        } else {
+                                                            file_put_contents($imageFile, file_get_contents(__DIR__ .'/../../../../../../public/themes/velocity/assets/images/Logo.png'));
+                                                        }
 
                                                         $data['images'][$imageArraykey] = $imageFile;
                                                     }
