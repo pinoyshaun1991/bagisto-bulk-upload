@@ -656,6 +656,7 @@ class ConfigurableProductRepository extends Repository
             $requestData['productUploaded']        = 0;
             $fileFound                             = false;
 
+
             if ($dataFlowProfileRecord) {
 
                 $directory    = __DIR__.'/../../../../../../../../Data';
@@ -1005,6 +1006,10 @@ class ConfigurableProductRepository extends Repository
 
                                             $superAttributes = explode(',', $csvData[$i]['super_attributes']);
                                             $superAttributesOption = explode(',', $csvData[$i]['super_attribute_option']);
+
+                                            if (count($superAttributes) != count($superAttributesOption)) {
+                                                $superAttributesOption = array_slice($superAttributesOption,0,2);
+                                            }
 
                                             $data['super_attributes'] = array_combine($superAttributes, $superAttributesOption);
 
